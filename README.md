@@ -16,7 +16,7 @@ El código que se despliega vive en el repositorio privado `hr-assistant`. La ca
 
 ## Demo
 
-GitHub no permite embeber este video (pesa 109 MB), así que está adjunto al release
+GitHub no permite embeber este video (pesa 220 MB), así que está adjunto al release
 [v1.0-entrega](https://github.com/deremmanueldominguez-ux/Reto-M4/releases/tag/v1.0-entrega).
 
 **Ver el video:** [demo-reto-m4.mp4](https://github.com/deremmanueldominguez-ux/Reto-M4/releases/download/v1.0-entrega/demo-reto-m4.mp4)
