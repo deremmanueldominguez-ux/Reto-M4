@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HR Assistant</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 760px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #222;
+    }
+    h1 { font-size: 1.4rem; }
+    #conversation {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 1rem;
+      min-height: 200px;
+      margin-bottom: 1rem;
+      background: #fafafa;
+    }
+    .turn { margin: 0 0 0.8rem 0; white-space: pre-wrap; }
+    .turn.user { font-weight: 600; }
+    .turn.error { color: #a00; }
+    .tools, .request-id { font-size: 0.85rem; color: #666; }
+    form { display: flex; gap: 0.5rem; }
+    input { flex: 1; padding: 0.5rem; font-size: 1rem; }
+    button { padding: 0.5rem 1rem; font-size: 1rem; }
+    .key-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Asistente de Recursos Humanos</h1>
+  <div class="key-row">
+    <label for="api-key">Clave de acceso</label>
+    <input id="api-key" data-testid="api-key" type="password" autocomplete="off"
+           placeholder="Escribe tu clave">
+  </div>
+  <div id="conversation" data-testid="answer" aria-live="polite"></div>
+  <form id="ask-form">
+    <input id="question" data-testid="question" type="text" autocomplete="off"
+           placeholder="Pregunta por un empleado (EMP-0001) o un departamento">
+    <button id="send" data-testid="send" type="submit">Enviar</button>
+  </form>
+  <p id="request-id" class="request-id" data-testid="request-id"></p>
+  <script>
+    // El historial vive solo en la memoria del navegador.
+    const history = [];
+    const conversation = document.getElementById("conversation");
+    const form = document.getElementById("ask-form");
+    const input = document.getElementById("question");
+    const button = document.getElementById("send");
+    const lastRequestId = document.getElementById("request-id");
+    const keyInput = document.getElementById("api-key");
+    // La clave vive solo en sessionStorage: se borra al cerrar la pestaña y nunca
+    // va escrita en esta página.
+    const KEY_STORAGE = "hr-assistant-api-key";
+    keyInput.value = sessionStorage.getItem(KEY_STORAGE) || "";
+    keyInput.addEventListener("input", () => {
+      sessionStorage.setItem(KEY_STORAGE, keyInput.value.trim());
+    });
+
+    // Mensaje para una respuesta que no fue exitosa.
+    function errorMessage(response) {
+      if (response.status === 401) {
+        return "Clave inválida";
+      }
+      if (response.status === 429) {
+        const seconds = response.headers.get("Retry-After") || "unos";
+        return "Demasiadas preguntas; espera " + seconds + " segundos";
+      }
+      if (response.status === 422) {
+        return "La pregunta no es válida: no puede estar vacía ni ser demasiado larga.";
+      }
+      return "El asistente respondió con un error (" + response.status + ").";
+    }
+
+    // Agrega un turno a la conversación usando solo textContent.
+    // requestId es el id de la petición que la persona puede pasar a soporte.
+    function addTurn(kind, text, tools, requestId) {
+      const turn = document.createElement("div");
+      turn.className = "turn " + kind;
+      const body = document.createElement("div");
+      body.textContent = text;
+      turn.appendChild(body);
+      if (tools !== undefined) {
+        const used = document.createElement("div");
+        used.className = "tools";
+        used.textContent = "Herramientas usadas: " +
+          (tools.length ? tools.join(", ") : "ninguna");
+        turn.appendChild(used);
+      }
+      if (requestId) {
+        const id = document.createElement("div");
+        id.className = "request-id";
+        id.textContent = "Id de la petición: " + requestId;
+        turn.appendChild(id);
+        lastRequestId.textContent = "Última petición: " + requestId;
+      }
+      conversation.appendChild(turn);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question) {
+        addTurn("error", "Escribe una pregunta antes de enviar.");
+        return;
+      }
+      addTurn("user", question);
+      input.value = "";
+      button.disabled = true;
+      const apiKey = keyInput.value.trim();
+      sessionStorage.setItem(KEY_STORAGE, apiKey);
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+          body: JSON.stringify({ question: question, history: history })
+        });
+        // En los errores el id llega en el encabezado X-Request-ID.
+        const headerId = response.headers.get("X-Request-ID");
+        if (!response.ok) {
+          addTurn("error", errorMessage(response), undefined, headerId);
+          return;
+        }
+        const data = await response.json();
+        addTurn("assistant", data.answer, data.tools_used || [],
+          data.request_id || headerId);
+        history.push({ role: "user", content: question });
+        history.push({ role: "assistant", content: data.answer });
+      } catch (error) {
+        addTurn("error", "No se pudo conectar con el asistente. Intenta de nuevo.");
+      } finally {
+        button.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
