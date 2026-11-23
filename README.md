@@ -14,6 +14,13 @@ Este repositorio contiene dos cosas:
 El código que se despliega vive en el repositorio privado `hr-assistant`. La carpeta
 `product/` de este repositorio es una copia de ese código en el momento de la entrega.
 
+## Demo
+
+GitHub no permite embeber este video (pesa 109 MB), así que está adjunto al release
+[v1.0-entrega](https://github.com/deremmanueldominguez-ux/Reto-M4/releases/tag/v1.0-entrega).
+
+**Ver el video:** [demo-reto-m4.mp4](https://github.com/deremmanueldominguez-ux/Reto-M4/releases/download/v1.0-entrega/demo-reto-m4.mp4)
+
 ## Documentación de la entrega
 
 | Documento | Contenido |
